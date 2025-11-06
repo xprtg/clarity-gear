@@ -25,12 +25,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/clarity-gear.git"
+    "url": "https://github.com/xprtg/clarity-gear.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/clarity-gear/issues"
+    "url": "https://github.com/xprtg/clarity-gear/issues"
   },
-  "homepage": "https://github.com/yourusername/clarity-gear#readme",
+  "homepage": "https://github.com/xprtg/clarity-gear#readme",
   "engines": {
     "node": ">=18.0.0"
   },
