@@ -1,0 +1,46 @@
+{
+  "name": "clarity-gear",
+  "version": "1.0.0",
+  "description": "Autonomous semantic index generator for any codebase",
+  "main": "clarity-gear.ts",
+  "bin": {
+    "clarity-gear": "./clarity-gear.ts"
+  },
+  "scripts": {
+    "index:generate": "tsx clarity-gear.ts",
+    "start": "tsx clarity-gear.ts"
+  },
+  "keywords": [
+    "semantic-index",
+    "codebase-index",
+    "documentation",
+    "code-analysis",
+    "yaml-index",
+    "code-chunking",
+    "semantic-search"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/clarity-gear.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/clarity-gear/issues"
+  },
+  "homepage": "https://github.com/yourusername/clarity-gear#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0"
+  },
+  "files": [
+    "clarity-gear.ts",
+    "README.md",
+    "LICENSE"
+  ]
+}
+
