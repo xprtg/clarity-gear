@@ -5,7 +5,7 @@ import { join, relative, extname, basename, dirname } from 'path';
 import { createHash } from 'crypto';
 import { execSync } from 'child_process';
 
-interface IndexEntry {
+export interface IndexEntry {
   id: string;
   title: string;
   domain: string;
@@ -30,6 +30,15 @@ interface Chunk {
   level: number;
   startLine: number;
   endLine: number;
+}
+
+type ChunkType = 'function' | 'class' | 'interface' | 'type' | 'export' | 'comment';
+
+interface CodeChunk {
+  text: string;
+  title: string;
+  type: ChunkType;
+  line: number;
 }
 
 export interface ClarityGearOptions {
@@ -59,13 +68,19 @@ function countTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
-function extractFrontmatter(content: string): { frontmatter: Record<string, any>; body: string } {
+interface Frontmatter {
+  title?: string;
+  author?: string;
+  [key: string]: string | undefined;
+}
+
+function extractFrontmatter(content: string): { frontmatter: Frontmatter; body: string } {
   const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/;
   const match = content.match(frontmatterRegex);
   if (match) {
     const frontmatterText = match[1];
     const body = match[2];
-    const frontmatter: Record<string, any> = {};
+    const frontmatter: Frontmatter = {};
     frontmatterText.split('\n').forEach(line => {
       const colonIndex = line.indexOf(':');
       if (colonIndex > 0) {
@@ -476,8 +491,8 @@ export class ClarityGear {
     return files;
   }
 
-  private chunkCodeFile(content: string, filePath: string): Array<{ text: string; title: string; type: 'function' | 'class' | 'interface' | 'type' | 'export' | 'comment'; line: number }> {
-    const chunks: Array<{ text: string; title: string; type: 'function' | 'class' | 'interface' | 'type' | 'export' | 'comment'; line: number }> = [];
+  private chunkCodeFile(content: string, filePath: string): CodeChunk[] {
+    const chunks: CodeChunk[] = [];
     const lines = content.split('\n');
     const fileName = basename(filePath);
     const functionRegex = /^(export\s+)?(async\s+)?function\s+(\w+)/;
@@ -487,7 +502,7 @@ export class ClarityGear {
     const constExportRegex = /^export\s+(const|let|var)\s+(\w+)/;
     let currentChunk: string[] = [];
     let currentTitle = fileName;
-    let currentType: typeof chunks[0]['type'] = 'export';
+    let currentType: ChunkType = 'export';
     let chunkStartLine = 0;
     let braceDepth = 0;
     let inFunction = false;
@@ -640,7 +655,7 @@ export class ClarityGear {
             chunks.push({ text: body, title: frontmatter.title || 'Document', level: 1, startLine: 0, endLine: body.split('\n').length - 1 });
           }
         }
-        const maxChunks = INDEX_LIMITS.MAX_CHUNKS_PER_FILE[ext] || INDEX_LIMITS.MAX_CHUNKS_PER_FILE['.md'];
+        const maxChunks = INDEX_LIMITS.MAX_CHUNKS_PER_FILE[ext as keyof typeof INDEX_LIMITS.MAX_CHUNKS_PER_FILE] || INDEX_LIMITS.MAX_CHUNKS_PER_FILE['.md'];
         if (chunks.length > maxChunks) {
           chunks = chunks.slice(0, maxChunks);
         }
@@ -691,7 +706,7 @@ export class ClarityGear {
         }
       } else if (SOURCE_CODE_EXTENSIONS.has(ext)) {
         let codeChunks = this.chunkCodeFile(content, filePath);
-        const maxChunks = INDEX_LIMITS.MAX_CHUNKS_PER_FILE[ext] || INDEX_LIMITS.MAX_CHUNKS_PER_FILE['.ts'];
+        const maxChunks = INDEX_LIMITS.MAX_CHUNKS_PER_FILE[ext as keyof typeof INDEX_LIMITS.MAX_CHUNKS_PER_FILE] || INDEX_LIMITS.MAX_CHUNKS_PER_FILE['.ts'];
         if (codeChunks.length > maxChunks) {
           const important = codeChunks.filter(c => ['function', 'class', 'interface', 'type'].includes(c.type));
           const others = codeChunks.filter(c => !['function', 'class', 'interface', 'type'].includes(c.type));
@@ -826,7 +841,12 @@ export class ClarityGear {
     });
   }
 
-  private calculateMetrics(entries: IndexEntry[]): { chunkCount: number; avgTokens: number; coverage: number; avgFreshness: number } {
+  private calculateMetrics(entries: IndexEntry[]): {
+    chunkCount: number;
+    avgTokens: number;
+    coverage: number;
+    avgFreshness: number;
+  } {
     const totalTokens = entries.reduce((sum, e) => sum + countTokens(e.mini_summary), 0);
     const avgTokens = entries.length > 0 ? totalTokens / entries.length : 0;
     const avgFreshness = entries.length > 0 ? entries.reduce((sum, e) => sum + e.freshness_score, 0) / entries.length : 0;
@@ -1290,16 +1310,20 @@ export class ClarityGear {
   }
 }
 
-async function main() {
-  const args = process.argv.slice(2);
-  const options: { maxEntries?: number; partitionBy?: 'domain' | 'importance' | 'none'; outputDir?: string } = {};
+async function main(): Promise<void> {
+  const args: string[] = process.argv.slice(2);
+  const options: ClarityGearOptions = {};
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--max-entries' && args[i + 1]) {
-      options.maxEntries = parseInt(args[i + 1], 10);
+      const maxEntries = parseInt(args[i + 1], 10);
+      if (!isNaN(maxEntries) && maxEntries > 0) {
+        options.maxEntries = maxEntries;
+      }
       i++;
     } else if (args[i] === '--partition-by' && args[i + 1]) {
-      if (['domain', 'importance', 'none'].includes(args[i + 1])) {
-        options.partitionBy = args[i + 1] as 'domain' | 'importance' | 'none';
+      const partitionValue = args[i + 1];
+      if (['domain', 'importance', 'none'].includes(partitionValue)) {
+        options.partitionBy = partitionValue as PartitionStrategy;
       }
       i++;
     } else if (args[i] === '--output-dir' && args[i + 1]) {

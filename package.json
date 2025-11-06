@@ -7,6 +7,8 @@
     "clarity-gear": "./clarity-gear.ts"
   },
   "scripts": {
+    "clean": "rm -rf dist || true",
+    "build": "npm run clean && tsc",
     "index:generate": "tsx clarity-gear.ts",
     "start": "tsx clarity-gear.ts"
   },
